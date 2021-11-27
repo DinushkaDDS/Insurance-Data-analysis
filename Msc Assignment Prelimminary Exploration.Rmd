@@ -1,0 +1,134 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dlookr)
+data_set<-read.csv("insuranceCost.csv",header=TRUE)
+print(data_set)
+
+data_set$Childrens <- as.factor(data_set$Childrens)
+#data_set$Age <- transform(data_set$Age, method="zscore")
+#data_set$Age <- transform(data_set$Age, method="log")
+#data_set$BMI <- transform(data_set$BMI, method="zscore")
+
+library(caTools)
+set.seed(5)
+split = sample.split(data_set, SplitRatio = 0.80)
+ 
+# Create training and testing sets
+train = subset(data_set, split == TRUE)
+test = subset(data_set, split == FALSE)
+
+#print(summary(train$Childrens))
+
+print(describe(train))
+
+```
+```{r}
+print(normality(train))
+```
+```{r}
+plot_normality(train)
+```
+```{r}
+find_skewness(train, value=TRUE)
+```
+
+```
+In this analysis Charge values will be the predictor variable.
+Gender, Smoker, Region values are categorical variables
+```
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(ggfortify)
+library(feasts)
+
+data_filtered <- train%>% select(Age, Charge)
+
+data_filtered %>% ggplot(aes(x = Age, y = Charge)) +
+  geom_point() +
+  labs(x = "Age",
+       y = "Charge")
+```
+```{r}
+train %>% ggplot(aes(x = BMI, y = Charge)) +
+  geom_point() +
+  labs(x = "BMI",
+       y = "Charge")
+```
+```{r}
+train %>% ggplot(aes(x = Childrens, y = Charge)) +
+  geom_point() +
+  labs(x = "Childrens",
+       y = "Charge")
+```
+```{r}
+train %>% ggplot(aes(x = Region, y = Charge)) +
+  geom_point() +
+  labs(x = "Region",
+       y = "Charge")
+```
+```{r}
+train %>% ggplot(aes(x = Smoker, y = Charge)) +
+  geom_point() +
+  labs(x = "Smoker",
+       y = "Charge")
+```
+```{r}
+result <- aov(Charge~Age*BMI*Smoker*Region*Gender*Childrens ,data = train)
+print(summary(result))
+```
+
+```{r}
+lm1 <- lm(train, formula = Charge~.)
+summary(lm1)
+```
+
+```{r}
+library(leaps)
+
+
+Best_Subset <- regsubsets(Charge~(Age+BMI+Smoker+Region+Childrens)^2,
+               data =train,
+               nbest = 1,      # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               method = "backward",
+               really.big = T)
+summary_best_subset <- summary(Best_Subset)
+#print(summary_best_subset)
+```
+```{r}
+which.max(summary_best_subset$adjr2)
+
+```
+```{r}
+summary_best_subset$which[24,]
+
+
+```
+```{r}
+
+
+
+
+
+
+#lm2 <- lm(train, formula = Charge~Age+BMI+Smoker+Region+Childrens+Age+BMI*Smoker+BMI*Region+Smoker*Region+Age*Region)
+lm2 <- lm(train, formula = Charge~Age+BMI+Smoker+Region+Childrens+Age+ Age*Region + Age*Childrens + BMI*Smoker + BMI*Region)
+summary(lm2)
+```
+```{r}
+predVals <-predict(lm2, newdata = test)
+df <- data.frame(test, predVals)
+df$error <- with(df, predVals-Charge)
+df
+```
+```{r}
+rmse <- with(df, sqrt(mean(error^2)))
+rmse
+```
+
